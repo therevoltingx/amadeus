@@ -1,0 +1,275 @@
+.backtests-tab {
+  padding: 1.5rem;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.backtests-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.backtests-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.backtests-list {
+  background: #1e293b;
+  border-radius: 0.5rem;
+  border: 1px solid #334155;
+  overflow: hidden;
+}
+
+.backtests-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.backtests-table th,
+.backtests-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #334155;
+}
+
+.backtests-table th {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.backtests-table tbody tr {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.backtests-table tbody tr:hover {
+  background: #334155;
+}
+
+.backtests-table tbody tr.selected {
+  background: #475569;
+}
+
+.backtests-status {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.backtests-status.queued {
+  background: #334155;
+  color: #94a3b8;
+}
+
+.backtests-status.running {
+  background: #1e3a5f;
+  color: #93c5fd;
+}
+
+.backtests-status.completed {
+  background: #14532d;
+  color: #86efac;
+}
+
+.backtests-status.failed {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
+
+.backtests-detail {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background: #1e293b;
+  border-radius: 0.5rem;
+  border: 1px solid #334155;
+}
+
+.backtests-detail h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: #94a3b8;
+}
+
+.backtests-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.backtests-detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.backtests-detail-label {
+  font-size: 0.7rem;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.backtests-detail-value {
+  font-size: 1rem;
+  font-family: ui-monospace, monospace;
+}
+
+.backtests-trades-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+}
+
+.backtests-pair-cell {
+  white-space: nowrap;
+  max-width: 14rem;
+}
+
+.backtests-trades-table th,
+.backtests-trades-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #334155;
+  font-size: 0.9rem;
+}
+
+.backtests-trades-table th {
+  font-size: 0.7rem;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.backtests-result-win {
+  color: #86efac;
+}
+
+.backtests-result-loss {
+  color: #fca5a5;
+}
+
+.backtests-run-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  padding: 1rem;
+  background: #0f172a;
+  border-radius: 0.5rem;
+  border: 1px solid #334155;
+  margin-bottom: 1.5rem;
+}
+
+.backtests-run-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.backtests-run-form input,
+.backtests-run-form select {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  border: 1px solid #475569;
+  background: #1e293b;
+  color: #f1f5f9;
+  min-width: 140px;
+  color-scheme: dark;
+}
+
+.backtests-custom-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.backtests-datetime-local {
+  min-width: 11.5rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.9rem;
+}
+
+.backtests-policy-version-select {
+  min-width: min(28rem, 100%);
+  max-width: 36rem;
+}
+
+.backtests-run-form button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  border: 1px solid #475569;
+  background: #334155;
+  color: #f1f5f9;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.backtests-run-form button:hover {
+  background: #475569;
+}
+
+.backtests-run-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.backtests-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #64748b;
+}
+
+.backtests-load-error {
+  padding: 1rem;
+  background: #7f1d1d;
+  color: #fca5a5;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.backtests-back {
+  margin-bottom: 1rem;
+}
+
+.backtests-back button {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  background: transparent;
+  border: 1px solid #475569;
+  color: #94a3b8;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.backtests-back button:hover {
+  background: #334155;
+  color: #f1f5f9;
+}
+
+.backtests-entry-diag-summary {
+  margin-bottom: 0.5rem;
+}
+
+.backtests-rejection-table {
+  margin-top: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.backtests-rejection-table code {
+  font-size: 0.85em;
+  background: #334155;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.2rem;
+}

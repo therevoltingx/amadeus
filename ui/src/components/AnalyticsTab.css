@@ -1,0 +1,152 @@
+.analytics-tab {
+  padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.analytics-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.analytics-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.analytics-status .status-ok {
+  color: var(--color-success, #22c55e);
+}
+
+.analytics-status .status-error {
+  color: var(--color-error, #ef4444);
+}
+
+.analytics-section {
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  border: 1px solid #334155;
+}
+
+.analytics-section h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.15rem;
+}
+
+.analytics-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.analytics-policy-label {
+  font-size: 0.95rem;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.analytics-policy-select {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.9rem;
+  border-radius: 0.25rem;
+  border: 1px solid #475569;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-family: ui-monospace, monospace;
+  min-width: 120px;
+}
+
+.analytics-policy-select:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.analytics-range {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.analytics-range button {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  border-radius: 0.25rem;
+  border: 1px solid #475569;
+  background: #1e293b;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.analytics-range button:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.analytics-range button.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+.analytics-loading,
+.analytics-empty {
+  padding: 1.5rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.analytics-charts {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.analytics-chart-block {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #334155;
+}
+
+.analytics-chart-block:last-child {
+  border-bottom: none;
+}
+
+.analytics-chart-block h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.analytics-chart-tooltip {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.analytics-chart-svg-wrap {
+  overflow-x: auto;
+  min-height: 200px;
+}
+
+.analytics-chart-svg {
+  display: block;
+}
+
+.analytics-chart-legend {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+}
+
+.analytics-chart-legend-stack {
+  gap: 0.5rem 1.25rem;
+}

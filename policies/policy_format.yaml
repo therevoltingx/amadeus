@@ -1,0 +1,118 @@
+# Policy format (YAML)
+#
+# Schema used by the policy create/edit UI and MCP create_policy / update_policy tools.
+# Section order and field names match the form. Optional fields may be omitted;
+# missing volume-collapse, liquidity-trend, and rug fields are treated as disabled
+# (or use defaults where specified).
+#
+# Example: Pump.fun Ultra-Early — Bonding Curve Momentum
+
+# --- Metadata (top of form) ---
+policy_version: "1.5-pumpfun-ultra-early"
+status: draft  # draft | active | retired
+created_by: human  # human | agent
+linked_policy_id: null  # optional; policy this was cloned or derived from
+# parent_policy_version: (MCP only; optional; not in UI form)
+notes: "Ultra-early Pump.fun bonding-curve strategy. Optimized for first momentum burst with strict age gating, fast exits, and soft policy cooldowns."
+changelog: null  # optional; history of changes and reasons (e.g. optimizer appends entries)
+auto_optimize: false  # boolean; enable automatic optimization of this policy
+
+# --- Entry filters ---
+max_pair_age_seconds: 900  # Max pair age (sec)
+min_token_age_seconds: null  # Minimum Token Age (seconds); must be ≤ max_pair_age_seconds when both set
+min_liquidity_usd: null  # Min liquidity $
+min_volume_1m_usd: null  # Min volume 1m $
+min_price_change_1m_pct: null  # Min 1m price change % (pair_snapshots.price_change_1m); null = off
+min_volume_5m_usd: 3000  # Min volume 5m $
+min_buy_sell_ratio: 1.1  # Min buy/sell ratio 1m
+min_transactions_1m: null  # Min transactions 1m
+min_velocity_score_1m: null  # Min velocity score 1m
+min_buy_pressure_1m: null  # Min buy pressure 1m
+min_buy_volume_1m_usd: null  # Min buy volume 1m $
+min_sell_volume_1m_usd: null  # Min sell volume 1m $
+max_top_holder_pct: 60  # Max top holder %
+min_holder_count: 25  # Min holder count
+
+# --- Liquidity Trend Guard (optional; missing = disabled) ---
+liquidity_trend_guard_enabled: false  # boolean
+max_liquidity_drop_pct_30m: null  # when enabled: -1 to 0 (Max Liquidity Drop 30m)
+max_liquidity_drop_pct_1h: null  # when enabled: -1 to 0 (Max Liquidity Drop 1h)
+liquidity_trend_min_samples: null  # when enabled: ≥ 1 (Minimum Liquidity Samples)
+
+# --- Allowed DEXes ---
+# Comma-separated subset of: raydium, orca, pumpswap, pumpfun
+allowed_dexes: "raydium,orca,pumpswap,pumpfun"
+
+# --- Scoring weights ---
+weight_liquidity_velocity: 0.0
+weight_liquidity_absolute: 0.0
+weight_volume_1m: 0.0
+weight_volume_5m: 0.25
+weight_volume_acceleration_1m: 0.30
+weight_price_volatility_5m: 0.10
+weight_market_cap: 0.0
+weight_buy_sell_slope_1m: 0.25
+weight_velocity_score_1m: 0.0
+weight_buy_pressure_1m: 0.0
+weight_sell_pressure_1m: 0.0
+weight_buy_volume_1m: 0.0
+weight_sell_volume_1m: 0.0
+weight_price_momentum_5m: 0.30
+weight_holder_growth: 0.10
+weight_holder_concentration_penalty: -0.15
+weight_time_since_launch: -0.20
+weight_pair_age_seconds: 0.0
+
+# --- Score Thresholds ---
+min_trade_score: 60  # Min trade score
+priority_trade_score: 75  # Priority trade score
+
+# --- Risk ---
+risk_per_trade_pct: 4  # Risk per trade %
+stop_loss_pct: -30  # Stop loss %
+take_profit_pct: 35  # Take profit %
+time_stop_seconds: 240  # Time stop (sec)
+
+# --- Volume Collapse Exit (optional; missing = disabled) ---
+volume_collapse_exit_enabled: false  # boolean
+volume_collapse_ratio_threshold: null  # when enabled: 0.05–1
+volume_collapse_consecutive_checks: null  # when enabled: 1–10
+volume_collapse_min_samples: null  # when enabled: 1–50
+
+# --- Rug Protection ---
+rug_exit_enabled: true  # boolean; default true
+rug_liquidity_floor_usd: null  # USD; leave empty to disable; when set: ≥ 0
+rug_snapshot_stale_seconds: null  # seconds; min 30 when set; leave empty to disable
+rug_pair_missing_threshold: 3  # consecutive scrape failures; min 1
+
+# --- Limits ---
+max_trades_per_hour: 4
+max_concurrent_trades: 1
+cooldown_seconds_after_loss: 600  # Cooldown after loss (sec)
+cooldown_on_consecutive_losses: 3  # Pause after N consecutive losses; 0 = off
+cooldown_on_consecutive_losses_seconds: 1800
+
+# --- Token Execution Controls ---
+token_reentry_cooldown_seconds: 210  # Token Re-entry Cooldown (seconds)
+token_reentry_cooldown_seconds_after_win: null  # optional; must be < token_reentry_cooldown_seconds when both set
+max_trades_per_token_per_hour: 2  # or null; empty = disabled
+pair_loss_cooldown_seconds: 3600  # 0 or empty = disabled
+max_consecutive_losses_per_pair: 2  # or null; per calendar day; empty = disabled
+
+# --- Safety & Kill Switches ---
+halt_on_liquidity_drop_pct: null  # Halt on liq drop % (optional)
+require_no_mint_authority: false
+require_no_freeze_authority: false
+require_lp_lock: false
+halt_on_rug_detected: true
+allow_low_confidence_trades: false
+
+# --- Read-only (set by system, not in form) ---
+# policy_id: (assigned on create)
+# created_at: (timestamp)
+# updated_at: (timestamp or null)
+# activated_at: (timestamp or null)
+# retired_at: (timestamp or null)
+# retired_reason: (optional)
+# archived: (boolean; set when policy is archived)
+# archived_at: (timestamp or null)

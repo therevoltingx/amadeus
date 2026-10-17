@@ -1,0 +1,95 @@
+# --- Metadata ---
+policy_version: "0.1-baseline-runner"
+status: draft
+created_by: human
+linked_policy_id: null
+notes: "Baseline PumpSwap runner policy for Gemini optimization. Balanced thresholds and weights to allow learning without overfitting."
+auto_optimize: true
+
+# --- Entry filters ---
+max_pair_age_seconds: 1800
+min_token_age_seconds: null
+min_liquidity_usd: 10000
+min_volume_1m_usd: 2500
+min_volume_5m_usd: null
+min_buy_sell_ratio: 1.15
+min_transactions_1m: 15
+min_velocity_score_1m: null
+min_buy_pressure_1m: 0.53
+min_buy_volume_1m_usd: 1200
+min_sell_volume_1m_usd: null
+max_top_holder_pct: null
+min_holder_count: null
+
+# --- Liquidity Trend Guard ---
+liquidity_trend_guard_enabled: true
+max_liquidity_drop_pct_30m: -0.25
+max_liquidity_drop_pct_1h: -0.35
+liquidity_trend_min_samples: 5
+
+# --- Allowed DEXes ---
+allowed_dexes: "pumpswap"
+
+# --- Scoring weights ---
+weight_liquidity_velocity: 0.10
+weight_liquidity_absolute: 0.10
+weight_volume_1m: 0.25
+weight_volume_5m: 0.10
+weight_volume_acceleration_1m: 0.25
+weight_price_volatility_5m: 0.05
+weight_market_cap: 0.00
+weight_buy_sell_slope_1m: 0.20
+weight_velocity_score_1m: 0.25
+weight_buy_pressure_1m: 0.25
+weight_sell_pressure_1m: -0.20
+weight_buy_volume_1m: 0.20
+weight_sell_volume_1m: -0.15
+weight_price_momentum_5m: 0.30
+weight_holder_growth: 0.00
+weight_holder_concentration_penalty: 0.00
+weight_time_since_launch: -0.10
+weight_pair_age_seconds: -0.10
+
+# --- Score Thresholds ---
+min_trade_score: 60
+priority_trade_score: 75
+
+# --- Risk ---
+risk_per_trade_pct: 2.5
+stop_loss_pct: -28
+take_profit_pct: 50
+time_stop_seconds: 300
+
+# --- Volume Collapse Exit ---
+volume_collapse_exit_enabled: true
+volume_collapse_ratio_threshold: 0.35
+volume_collapse_consecutive_checks: 2
+volume_collapse_min_samples: 6
+
+# --- Rug Protection ---
+rug_exit_enabled: true
+rug_liquidity_floor_usd: 5000
+rug_snapshot_stale_seconds: 90
+rug_pair_missing_threshold: 3
+
+# --- Limits ---
+max_trades_per_hour: 4
+max_concurrent_trades: 1
+cooldown_seconds_after_loss: 900
+cooldown_on_consecutive_losses: 3
+cooldown_on_consecutive_losses_seconds: 1800
+
+# --- Token Execution Controls ---
+token_reentry_cooldown_seconds: 300
+token_reentry_cooldown_seconds_after_win: 120
+max_trades_per_token_per_hour: 2
+pair_loss_cooldown_seconds: 3600
+max_consecutive_losses_per_pair: 2
+
+# --- Safety & Kill Switches ---
+halt_on_liquidity_drop_pct: -40
+require_no_mint_authority: false
+require_no_freeze_authority: false
+require_lp_lock: false
+halt_on_rug_detected: true
+allow_low_confidence_trades: false

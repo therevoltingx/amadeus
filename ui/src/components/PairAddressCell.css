@@ -1,0 +1,50 @@
+.pair-addr-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+}
+
+.pair-addr-text {
+  cursor: default;
+}
+
+.pair-addr-link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.pair-addr-link:hover {
+  text-decoration: underline;
+  color: #60a5fa;
+}
+
+.pair-addr-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  border-radius: 0.25rem;
+  opacity: 0.7;
+}
+
+.pair-addr-copy:hover {
+  color: #e2e8f0;
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.pair-addr-copy:active {
+  transform: scale(0.95);
+}
+
+.pair-addr-cell[title]:hover .pair-addr-text {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}

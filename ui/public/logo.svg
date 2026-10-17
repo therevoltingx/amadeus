@@ -1,0 +1,51 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- Solid background -->
+  <circle cx="128" cy="128" r="120" fill="#1F2937"/>
+
+  <!-- Simple AI face outline -->
+  <circle
+    cx="128"
+    cy="128"
+    r="70"
+    fill="none"
+    stroke="#E5E7EB"
+    stroke-width="12"
+  />
+
+  <!-- Meme eyes (big + readable) -->
+  <circle cx="104" cy="118" r="10" fill="#F9FAFB"/>
+  <circle cx="152" cy="118" r="10" fill="#F9FAFB"/>
+
+  <!-- Red pupils (meme energy) -->
+  <circle cx="106" cy="120" r="4" fill="#EF4444"/>
+  <circle cx="154" cy="120" r="4" fill="#EF4444"/>
+
+  <!-- Smirk -->
+  <path
+    d="M100 150
+       q28 18 56 0"
+    fill="none"
+    stroke="#E5E7EB"
+    stroke-width="10"
+    stroke-linecap="round"
+  />
+
+  <!-- Stonks arrow (iconified) -->
+  <path
+    d="M70 180
+       L110 150
+       L140 165
+       L190 120"
+    fill="none"
+    stroke="#22C55E"
+    stroke-width="10"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Arrow head -->
+  <polygon
+    points="190,120 182,138 204,132"
+    fill="#22C55E"
+  />
+</svg>

@@ -1,0 +1,94 @@
+# --- Metadata (top of form) ---
+policy_version: "1.1-pumpswap-ultra-early"
+status: draft
+created_by: human
+linked_policy_id: null
+notes: "PumpSwap ultra-early momentum strategy targeting brand-new pairs within the first ~2 minutes of trading. Designed to capture the first momentum burst with tight exits and small position sizing."
+
+# --- Entry filters ---
+max_pair_age_seconds: 120
+min_token_age_seconds: null
+min_liquidity_usd: 6000
+min_volume_1m_usd: 2200
+min_volume_5m_usd: null
+min_buy_sell_ratio: 1.15
+min_transactions_1m: 18
+min_velocity_score_1m: null
+min_buy_pressure_1m: 0.54
+min_buy_volume_1m_usd: 1200
+min_sell_volume_1m_usd: null
+max_top_holder_pct: null
+min_holder_count: null
+
+# --- Liquidity Trend Guard ---
+liquidity_trend_guard_enabled: false
+max_liquidity_drop_pct_30m: null
+max_liquidity_drop_pct_1h: null
+liquidity_trend_min_samples: null
+
+# --- Allowed DEXes ---
+allowed_dexes: "pumpswap"
+
+# --- Scoring weights ---
+weight_liquidity_velocity: 0.25
+weight_liquidity_absolute: 0.10
+weight_volume_1m: 0.35
+weight_volume_5m: 0.0
+weight_volume_acceleration_1m: 0.45
+weight_price_volatility_5m: 0.05
+weight_market_cap: 0.0
+weight_buy_sell_slope_1m: 0.30
+weight_velocity_score_1m: 0.40
+weight_buy_pressure_1m: 0.30
+weight_sell_pressure_1m: -0.30
+weight_buy_volume_1m: 0.25
+weight_sell_volume_1m: -0.20
+weight_price_momentum_5m: 0.15
+weight_holder_growth: 0.0
+weight_holder_concentration_penalty: 0.0
+weight_time_since_launch: -0.40
+weight_pair_age_seconds: -0.50
+
+# --- Score Thresholds ---
+min_trade_score: 68
+priority_trade_score: 85
+
+# --- Risk ---
+risk_per_trade_pct: 2
+stop_loss_pct: -24
+take_profit_pct: 30
+time_stop_seconds: 120
+
+# --- Volume Collapse Exit ---
+volume_collapse_exit_enabled: true
+volume_collapse_ratio_threshold: 0.35
+volume_collapse_consecutive_checks: 1
+volume_collapse_min_samples: 3
+
+# --- Rug Protection ---
+rug_exit_enabled: true
+rug_liquidity_floor_usd: 3000
+rug_snapshot_stale_seconds: 60
+rug_pair_missing_threshold: 2
+
+# --- Limits ---
+max_trades_per_hour: 5
+max_concurrent_trades: 1
+cooldown_seconds_after_loss: 900
+cooldown_on_consecutive_losses: 3
+cooldown_on_consecutive_losses_seconds: 1800
+
+# --- Token Execution Controls ---
+token_reentry_cooldown_seconds: 600
+token_reentry_cooldown_seconds_after_win: 300
+max_trades_per_token_per_hour: 1
+pair_loss_cooldown_seconds: 7200
+max_consecutive_losses_per_pair: 1
+
+# --- Safety & Kill Switches ---
+halt_on_liquidity_drop_pct: -30
+require_no_mint_authority: false
+require_no_freeze_authority: false
+require_lp_lock: false
+halt_on_rug_detected: true
+allow_low_confidence_trades: false

@@ -1,0 +1,431 @@
+.pair-scores-tab {
+  padding: 1.5rem;
+  max-width: 1800px;
+  margin: 0 auto;
+}
+
+.pair-scores-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.pair-scores-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.pair-scores-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pair-scores-controls select {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  border: 1px solid #475569;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.pair-scores-pair-filter {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  border: 1px solid #475569;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 0.875rem;
+  min-width: 12rem;
+}
+
+.pair-scores-pair-filter::placeholder {
+  color: #64748b;
+}
+
+.pair-scores-refresh-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  border: 1px solid #475569;
+  background: #334155;
+  color: #e2e8f0;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.pair-scores-refresh-btn:hover:not(:disabled) {
+  background: #475569;
+}
+
+.pair-scores-refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pair-scores-status {
+  font-size: 0.875rem;
+}
+
+.pair-scores-status .status-ok {
+  color: var(--color-success, #22c55e);
+}
+
+.pair-scores-status .status-error {
+  color: var(--color-error, #ef4444);
+}
+
+.pair-scores-error {
+  padding: 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 0.5rem;
+  color: var(--color-error, #ef4444);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pair-scores-error button {
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.pair-scores-error button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.pair-scores-new-indicator {
+  padding: 0.5rem 1rem;
+  margin-bottom: 1rem;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-radius: 0.5rem;
+  color: #22c55e;
+  font-size: 0.875rem;
+  font-weight: 500;
+  animation: pair-scores-new-fade 4s ease-out forwards;
+}
+
+@keyframes pair-scores-new-fade {
+  0% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0.4; }
+}
+
+.pair-scores-loading {
+  padding: 2rem;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.pair-scores-table-wrapper {
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  border: 1px solid #334155;
+  margin-bottom: 1rem;
+}
+
+.pair-scores-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.pair-scores-table th,
+.pair-scores-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #334155;
+}
+
+.pair-scores-table th {
+  background: #1e293b;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.pair-scores-table tbody tr:hover {
+  background: rgba(51, 65, 85, 0.3);
+}
+
+.pair-scores-table tbody tr.pair-scores-row-new {
+  animation: pair-scores-row-highlight 4s ease-out forwards;
+}
+
+@keyframes pair-scores-row-highlight {
+  0% {
+    background: rgba(34, 197, 94, 0.25);
+    box-shadow: inset 0 0 0 2px rgba(34, 197, 94, 0.4);
+  }
+  70% {
+    background: rgba(34, 197, 94, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.3);
+  }
+  100% {
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+.pair-scores-table .pair-addr {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  cursor: help;
+}
+
+.pair-scores-pair-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pair-scores-filter-pair-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border: none;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.pair-scores-filter-pair-btn:hover {
+  background: rgba(148, 163, 184, 0.2);
+  color: #e2e8f0;
+}
+
+.pair-scores-table .pair-scores-missing-cell {
+  cursor: help;
+}
+
+.pair-scores-missing-list {
+  color: #94a3b8;
+  font-size: 0.9em;
+}
+
+.pair-scores-table .reject-cell {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pair-scores-table .signal-priority {
+  color: #22c55e;
+}
+
+.pair-scores-table .signal-candidate {
+  color: #84cc16;
+}
+
+.pair-scores-table .signal-watch {
+  color: #f59e0b;
+}
+
+.pair-scores-table .signal-no-trade {
+  color: #94a3b8;
+}
+
+.pair-scores-pagination {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.pair-scores-pagination button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  border: 1px solid #475569;
+  background: #1e293b;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.pair-scores-pagination button:hover:not(:disabled) {
+  background: #334155;
+}
+
+.pair-scores-pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pair-scores-view-btn {
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+  border: 1px solid #475569;
+  background: #334155;
+  color: #e2e8f0;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.pair-scores-view-btn:hover {
+  background: #475569;
+}
+
+.pair-scores-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 2rem;
+}
+
+.pair-scores-detail-modal {
+  background: #1e293b;
+  border-radius: 0.5rem;
+  border: 1px solid #334155;
+  max-width: 720px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.pair-scores-detail-modal h3 {
+  margin: 0;
+  padding: 1.25rem 1.5rem;
+  font-size: 1.25rem;
+  border-bottom: 1px solid #334155;
+}
+
+.pair-scores-detail {
+  padding: 1.5rem;
+}
+
+.pair-scores-detail-section {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin: 1.25rem 0 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid #334155;
+}
+
+.pair-scores-detail-section:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.pair-scores-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem 2rem;
+}
+
+.pair-scores-detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.pair-scores-detail-row .detail-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.pair-scores-detail-row .detail-value {
+  font-size: 0.875rem;
+  color: #e2e8f0;
+}
+
+.pair-scores-detail-row .detail-link {
+  font-size: 0.8rem;
+  color: #60a5fa;
+  word-break: break-all;
+}
+
+.pair-scores-detail-row .detail-link:hover {
+  text-decoration: underline;
+}
+
+.pair-scores-detail-row .detail-mono {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+}
+
+.pair-scores-detail-json {
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  background: #0f172a;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-family: ui-monospace, monospace;
+  color: #e2e8f0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.pair-scores-detail-notes {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+  color: #94a3b8;
+  white-space: pre-wrap;
+}
+
+.pair-scores-detail-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #334155;
+}
+
+.pair-scores-detail-buttons button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  border: 1px solid #475569;
+  background: #334155;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.pair-scores-detail-buttons button:hover {
+  background: #475569;
+}
+
+.pair-scores-snapshots-table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 1rem;
+  border-radius: 0.25rem;
+  border: 1px solid #334155;
+}
+
+.pair-scores-snapshots-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.pair-scores-snapshots-table th,
+.pair-scores-snapshots-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #334155;
+}
+
+.pair-scores-snapshots-table th {
+  background: #0f172a;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.pair-scores-snapshots-table tbody tr:hover {
+  background: rgba(51, 65, 85, 0.3);
+}
