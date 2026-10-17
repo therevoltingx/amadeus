@@ -1,369 +1,412 @@
-# amadeus
+# Amadeus
 
-An AI-driven trading bot for fresh Solana memecoins.
+An AI-driven trading bot for fresh Solana memecoins. It discovers new pairs from
+on-chain data, scores them against declarative policies, and executes paper or live
+trades through a deterministic pipeline — with backtesting, per-policy analytics, and
+optional LLM agents that propose strategy changes for human review.
 
-## Setup
+Node.js 24 · TypeScript · PostgreSQL · Redis · React · [MCP](https://modelcontextprotocol.io/)
+
+---
+
+## ⚠️ Read this first
+
+**This software places real trades with real money. It can and will lose funds.**
+
+- **Experimental and unaudited.** Written for one person's use, published as-is. There
+  is no warranty of any kind, and no guarantee it does what this README claims.
+- **Memecoin trading is close to worst-case.** Tokens minted minutes ago, thin
+  liquidity, rug pulls, honeypots, and sandwich attacks are the normal operating
+  environment, not edge cases. Most strategies lose money net of fees and slippage.
+- **Not financial advice.** Nothing here is a recommendation to trade anything. You are
+  solely responsible for any funds you put at risk and for complying with the law
+  wherever you are.
+- **Live trading is off by default** and stays off until you set two separate
+  environment variables. Start on paper. Then backtest. Then paper again.
+- **It needs your private key** to sign transactions. Read [Security](#security) before
+  you put a key anywhere near this.
+
+If you are looking for a turnkey profitable bot, this is not that. It is a framework for
+expressing and testing strategies, where the strategy is yours and so is the outcome.
+
+---
+
+## Contents
+
+- [How it works](#how-it-works)
+- [Quickstart](#quickstart)
+- [Configuration](#configuration)
+- [Running the stack](#running-the-stack)
+- [Workers](#workers)
+- [Policies, accounts, deployments](#policies-accounts-deployments)
+- [Security](#security)
+- [Known limitations](#known-limitations)
+- [MCP server](#mcp-server)
+- [UI](#ui)
+- [Operational scripts](#operational-scripts)
+- [Development](#development)
+- [License](#license)
+
+---
+
+## How it works
+
+Data flows one way through a chain of independent workers, each reading what the
+previous one wrote to Postgres:
+
+```
+  pumpswap-pairs ──────────> pairs              new pools, from a program log subscription
+  pumpswap-vault-swap ─────> pair_swap_events   buys/sells, from vault account subscriptions
+  chain-snapshots ─────────> pair_snapshots     price, liquidity, volume, holders, authorities
+  scoring ─────────────────> pair_scores        policy filters + weighted features -> a signal
+  execution ───────────────> trade_decisions    entries, after risk and limit checks
+  exit ────────────────────> trades             closes on stop / target / time / rug / collapse
+```
+
+Alongside that: `policy-analytics` rolls events into hourly buckets, `backtest` replays
+history against a policy, and `account-balance` keeps live wallet balances fresh.
+
+Everything observable is a table, so every decision is auditable after the fact — why a
+pair was rejected, which filter it missed by how much, what the score decomposed into.
+
+**Discovery is push, not poll.** New pools arrive over a WebSocket subscription to the
+PumpSwap program rather than by scraping an API, and the pairs worker publishes them to
+Redis (`pairs:new`) so the swap-event worker can subscribe to a brand-new pool's vaults
+within seconds of its creation. For tokens whose entire life is measured in minutes,
+that latency is the product.
+
+A deeper design walkthrough lives in [DESCRIPTION.md](DESCRIPTION.md).
+
+---
+
+## Quickstart
 
 ### Prerequisites
 
-- Node.js v24.13.0 or above 
-- npm
+| | |
+|---|---|
+| **Node.js 24.13.0+** | see [`.nvmrc`](.nvmrc) — `nvm use` |
+| **PostgreSQL** | the schema is applied automatically on first run |
+| **Redis** | used for pair-discovery pub/sub between workers |
+| **A Helius API key** | [helius.dev](https://helius.dev) — the only supported Solana RPC provider |
 
-### Install
+### Install and run
 
 ```bash
+git clone https://github.com/therevoltingx/amadeus.git
+cd amadeus
+nvm use
 npm install
+
+createdb amadeus                      # or point DATABASE_URL at an existing database
+cp .env.example .env                  # then fill in the three required variables
+npm run up                            # starts the MCP server, every worker, and the UI
 ```
 
-### Build
+Then open <http://localhost:5173>.
+
+`npm run up` runs a preflight first and refuses to start on a broken setup — wrong Node
+version, missing `.env`, unreachable Postgres or Redis, occupied port. It installs
+missing dependencies once the configuration checks out.
 
 ```bash
-npm run build
-```
-
-### Configuration
-
-Copy the example environment file and edit as needed:
-
-```bash
-cp .env.example .env
-```
-
-Available environment variables:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | MCP server port | `3000` |
-| `MCP_HTTP_REQUEST_TIMEOUT_MS` | Node HTTP `requestTimeout` for MCP (ms). Default **`0`** (disabled) so long tools are not closed by the server. | `0` |
-| `MCP_HTTP_HEADERS_TIMEOUT_MS` | Optional. Node `headersTimeout` (ms). | (Node default) |
-| `MCP_HTTP_KEEP_ALIVE_TIMEOUT_MS` | Optional. Node `keepAliveTimeout` (ms). | (Node default) |
-| `DATABASE_URL` | **Required.** PostgreSQL connection string (`postgresql://…`). Schema is applied on startup. | — |
-| `HELIUS_RPC_URL` | Helius RPC endpoint (required). Used for all Solana RPC: balance sync, execution, chain-snapshots (PumpSwap volume via getTransactionsForAddress), pumpswap-pairs worker. Example: `https://mainnet.helius-rpc.com/?api-key=XXX`. | — |
-| `REDIS_URL` | Redis connection URL (required for **pumpswap-vault-swap** worker). Pumpswap-pairs worker publishes new pairs to channel `pairs:new`; vault swap worker subscribes and adds vault watchers for new pairs (no DB polling). Example: `redis://localhost:6379`. | — |
-| `SOLANA_PRIVATE_KEY` | Signer for live Solana execution (env only; never in DB or UI). Base58 secret key or JSON array (Phantom-style) of 64 bytes. Required when running live Solana accounts. | — |
-| `LIVE_EXECUTION_DRY_RUN` | When `true`, live Solana executor does not send transactions (simulate only). | — |
-| `ENABLED_DEXES` | Comma-separated DEX ids for ingestion and snapshots (e.g. `raydium,pumpswap,pumpfun`). When set, the **pumpswap-pairs worker** and **chain-snapshots worker** only process pairs from these DEXes; when unset, all DEXes are allowed. | (all) |
-
-| `UI_PORT` | Port for the UI dev server (Vite). Only used when running `npm run ui`. | `5173` |
-
-| `UI_HOST` | Listen host for the UI dev server. Use `0.0.0.0` to listen on all interfaces (e.g. for LAN access), or `true`/`1` for same. Omit for localhost only. | (localhost) |
-
-| `AGENT_API_URL` | Base URL of the ADK agent API server (e.g. `http://localhost:8000`). Required for the **optimizer agent worker** and the UI Agent tab. The agent API server must be started separately from the `agents` directory with the desired entry point (e.g. `optimizer-agent.ts`). | — |
-
-| `OPTIMIZER_APP_NAME` | App name for the optimizer agent when calling the ADK API (e.g. `optimizer-agent` or `optimizer_agent`). Optional; the optimizer agent worker infers from `/list-apps` if unset. | (from list-apps) |
-
-| `OPTIMIZER_AGENT_INTERVAL_MINUTES` | Interval in minutes between optimizer agent worker runs. Must be between 1 and 1440 (24 hours). | `20` |
-
-| `PAPER_ACCOUNT_EQUITY_USD` | (Unused when using accounts table.) Paper balance is stored in `accounts`; default paper account starts at $100. | — |
-
-The database (SQLite) is created automatically on first run.
-
-## Running everything
-
-`scripts/amadeus.sh` starts the MCP server, every worker, and the UI as background
-processes, with a preflight check first. Logs go to `logs/<service>.log`, PIDs to `.run/`.
-
-```bash
-npm run up          # dev mode (tsx watch) — MCP + workers + UI
 npm run status      # what is running
-npm run logs        # tail every service (npm run logs -- scoring for one)
+npm run logs        # tail everything (npm run logs -- scoring for one service)
 npm run down        # stop everything
 ```
 
-Or call the script directly for options:
+Nothing trades live until you deliberately enable it. Out of the box you get a paper
+account seeded with $100 and a full pipeline writing real market data against it.
+
+---
+
+## Configuration
+
+All configuration is environment variables, read from `.env` in the project root. See
+[`.env.example`](.env.example) for a commented template.
+
+### Required
+
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string. The schema in [`src/db/schema/postgres-ddl.sql`](src/db/schema/postgres-ddl.sql) is applied on startup. Managed providers usually need `?sslmode=require`. |
+| `HELIUS_RPC_URL` | Helius RPC endpoint, e.g. `https://mainnet.helius-rpc.com/?api-key=YOUR_KEY`. Used for all Solana RPC: discovery, snapshots, execution, balances. |
+| `REDIS_URL` | e.g. `redis://localhost:6379`. Carries the `pairs:new` channel between the pairs and vault-swap workers. |
+
+### Live trading
+
+Both of these are off unless you set them. They are the only things standing between a
+paper run and real transactions.
+
+| Variable | Default | Description |
+|---|---|---|
+| `LIVE_TRADING_ENABLED` | `false` | **Master kill switch.** Must be exactly `true` or no live order is ever submitted, regardless of account configuration. |
+| `SOLANA_PRIVATE_KEY` | — | Signer for live execution. Base58 secret key, or a Phantom-style JSON array of 64 bytes. Read from the environment only — never stored in the database or exposed through the UI or MCP. |
+| `LIVE_EXECUTION_DRY_RUN` | `false` | When `true`, the live executor builds and simulates transactions but does not send them. Use this for your first live-configured run. |
+
+### Server and UI
+
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `3000` | MCP server port. |
+| `MCP_BIND_ADDRESS` | `127.0.0.1` | Interface the MCP server binds to. Loopback by default — see [Security](#security) before changing it. |
+| `MCP_ALLOWED_ORIGINS` | — | Comma-separated CORS allowlist for the MCP server. |
+| `UI_PORT` | `5173` | Vite dev server port. |
+| `UI_HOST` | localhost | Set `0.0.0.0` to expose the UI on your LAN. |
+| `MCP_URL` / `MCP_SERVER_URL` | `http://localhost:3000` | Where the UI and agents reach the MCP server. |
+
+### Pipeline tuning
+
+| Variable | Default | Description |
+|---|---|---|
+| `ENABLED_DEXES` | all | Comma-separated DEX ids for ingestion and snapshots, e.g. `raydium,pumpswap,pumpfun`. |
+| `SNAPSHOT_POLL_INTERVAL_SEC` | `60` | Seconds between snapshot cycles. Only `15`, `30`, or `60`. |
+| `SNAPSHOT_BATCH_SIZE` | — | Pairs per snapshot batch. Raise with care; it multiplies RPC load. |
+| `SNAPSHOT_BATCH_DELAY_MS` | — | Delay between snapshot batches, to stay under RPC rate limits. |
+| `PUMPSWAP_VAULT_ELIGIBILITY_POLL_SEC` | — | How often the vault-swap worker re-checks which pairs are eligible. |
+| `COALESCE_WINDOW_MS` | — | Window for coalescing vault swap events. |
+| `CHAINLINK_SOL_USD_FEED_ADDRESS` | — | When set, SOL/USD is read from a Chainlink feed over RPC instead of CoinGecko/Binance. |
+| `MORALIS_API_KEY` | — | Optional. Enriches snapshots with holder count and top-holder concentration. |
+
+### Agents
+
+The LLM agents are entirely optional; the trading pipeline runs without them.
+
+| Variable | Default | Description |
+|---|---|---|
+| `AGENT_API_URL` | — | Base URL of the ADK agent API server, e.g. `http://localhost:8000`. Required by the optimizer worker and the UI's Agent tab. |
+| `OPTIMIZER_APP_NAME` | from `/list-apps` | App name the optimizer agent is exposed under. |
+| `OPTIMIZER_AGENT_INTERVAL_MINUTES` | `20` | Minutes between optimizer runs (1–1440). |
+| `MCP_TOOLBOX_URL` | — | MCP Toolbox server, giving agents read-only SQL access. |
+| `MCP_TOOLBOX_CONNECTION_TIMEOUT_MS` | — | Connection timeout for the above. |
+
+### Advanced and debug
+
+`MCP_HTTP_REQUEST_TIMEOUT_MS` (default `0`, disabled, so long tool calls are not cut
+off), `MCP_HTTP_HEADERS_TIMEOUT_MS`, `MCP_HTTP_KEEP_ALIVE_TIMEOUT_MS`,
+`AMADEUS_PG_USE_DIST_WORKER`, `AMADEUS_DB_SYNCKIT_TIMEOUT_MS`,
+`DEBUG_PUMPSWAP_PARSER`, `DEBUG_PUMPSWAP_VOLUME`, `DEBUG_PUMPSWAP_PAIRS_FETCH`,
+`LOG_PUMPSWAP_VOLUME`.
+
+---
+
+## Running the stack
+
+[`scripts/amadeus.sh`](scripts/amadeus.sh) supervises all eleven processes. Logs go to
+`logs/<service>.log`, PIDs to `.run/`.
 
 ```bash
+scripts/amadeus.sh start                  # dev mode: tsx watch, auto-reload
 scripts/amadeus.sh start --prod           # run compiled dist/ (builds if missing)
 scripts/amadeus.sh start --no-ui          # headless
 scripts/amadeus.sh start --attach         # tail logs; Ctrl+C stops the stack
-scripts/amadeus.sh start --with-agent-api # also start the ADK api_server + optimizer worker
+scripts/amadeus.sh start --with-agent-api # also start the ADK server + optimizer worker
+scripts/amadeus.sh stop | restart | status | logs [service]
 ```
 
-Preflight verifies the Node version against `.nvmrc`, that `.env` exists with
-`DATABASE_URL` / `HELIUS_RPC_URL` / `REDIS_URL` set, that Postgres and Redis are
-reachable, that the MCP port is free, and installs missing dependencies. It refuses to
-start if any of that fails. When `LIVE_TRADING_ENABLED=true` it prints a loud warning
-before starting anything.
+Services start in pipeline order, with the MCP server first because it applies the
+database schema and the UI depends on it. A service that dies during startup is reported
+immediately with the tail of its log. `stop` walks the full process tree, so no worker
+is left holding an RPC subscription.
 
-Services start in pipeline order — MCP first (it applies the Postgres schema and the UI
-talks to it), then ingestion (`pumpswap-pairs`, `pumpswap-vault-swap`), snapshots,
-scoring, execution, exit, and the analytics/backtest/balance workers. A service that
-dies on startup is reported immediately with the tail of its log rather than failing
-silently.
+To run a single worker by hand, every one has an npm script and a watch variant:
 
-The `optimizer-agent` worker is opt-in (`--with-optimizer`) because it needs
-`AGENT_API_URL` and a running ADK api_server; see [Optimizer agent worker](#optimizer-agent-worker).
+```bash
+npm run worker:scoring          # compiled
+npm run worker:scoring:dev      # tsx watch
+```
+
+---
 
 ## Workers
 
-Each worker has a dev mode that runs TypeScript directly and reloads on file changes: `worker:pumpswap-pairs:dev`, `worker:pumpswap-vault-swap:dev`, `worker:chain-snapshots:dev`, `worker:scoring:dev`, `worker:execution:dev`, `worker:exit:dev`, `worker:policy-analytics:dev`, `worker:backtest:dev`, `worker:account-balance:dev`, `worker:optimizer-agent:dev`.
+Each runs as its own process and can be scaled or restarted independently.
 
-### PumpSwap vault swap worker (Redis pub/sub)
+| Worker | Writes | Cadence | Notes |
+|---|---|---|---|
+| `pumpswap-pairs` | `pairs` | push | WebSocket subscription to PumpSwap `create_pool`. Publishes to Redis `pairs:new`. |
+| `pumpswap-vault-swap` | `pair_swap_events` | push | Subscribes to pool vault accounts. Requires `REDIS_URL`. No DB polling. |
+| `chain-snapshots` | `pair_snapshots` | 15–60s | Pool reserves, supply, mint/freeze authority, SOL price, volume and buy/sell counts. On-chain only. PumpSwap for now. |
+| `scoring` | `pair_scores` | 30s | Applies each active policy's hard filters and feature weights. Emits `NO_TRADE` / `WATCH` / `TRADE_CANDIDATE` / `PRIORITY_TRADE` plus per-feature contributions. |
+| `execution` | `trade_decisions` | 2s | Entries. Validates policy and market mode, applies kill switches, per-policy and per-account limits, reserves balance, sizes the position. Paper or live depending on the account. |
+| `exit` | `trades` | 10s | Evaluates stop loss, take profit, time stop, volume collapse, and rug conditions in order. Settles PnL against the account. Sells on-chain for live accounts. |
+| `policy-analytics` | `policy_stats_hourly` | 45s | Idempotent hourly rollups for the Stats UI and agent reasoning. |
+| `backtest` | `backtest_*` | 5s | Picks up queued runs and replays the deterministic engine over historical snapshots and scores. Never touches live trading tables. |
+| `account-balance` | `accounts` | 90s | Syncs native SOL balance for live accounts. |
+| `optimizer-agent` | — | 20m | Opt-in. Pokes the optimizer agent, which may propose or apply policy changes. Requires `AGENT_API_URL`. |
 
-Subscribes to base/quote vault accounts for PumpSwap pairs and writes swap events to `pair_swap_events`. New pairs are discovered via Redis channel `pairs:new` (published by the pumpswap-pairs worker when it inserts a pair); at startup, loads existing pairs from the DB. **Requires `REDIS_URL`.** No DB polling. Run this worker so chain-snapshots (and scoring) have buy/sell event data.
+---
 
-```bash
-npm run worker:pumpswap-vault-swap
-# or with auto-reload: npm run worker:pumpswap-vault-swap:dev
-```
+## Policies, accounts, deployments
 
-### Chain snapshots worker
+The central design decision is that **strategy and capital are separate things**:
 
-Builds `pair_snapshots` from on-chain data only (no DexScreener). **PumpSwap only** for now; Raydium can be added later. Fetches pool reserves via the PumpSwap SDK, mint account for supply and mint/freeze authority, SOL price for USD conversion, and volume/buys/sells via Helius getTransactionsForAddress. Requires `HELIUS_RPC_URL`. Respects `ENABLED_DEXES` (must include `pumpswap` if set). Poll interval is configurable via `SNAPSHOT_POLL_INTERVAL_SEC` (only 15, 30, or 60 seconds; default 60). This is the only snapshot worker; run it so the UI and scoring have snapshot data.
+- A **policy** is strategy only — entry filters, scoring weights, risk (`risk_per_trade_pct`,
+  `stop_loss_pct`, `take_profit_pct`, `time_stop_seconds`), limits (trades per hour,
+  concurrent trades, cooldowns after losses), and safety rules (liquidity floors, rug
+  exit, required absence of mint authority). Policies live in the `policies` table and go
+  `draft` → `active` → `retired`. See [`policies/policy_format.yaml`](policies/policy_format.yaml)
+  for the full schema and the other files in [`policies/`](policies/) for worked examples.
+- An **account** is capital and account-level risk — balance, max drawdown, max open
+  trades, and whether it is `paper` or `live`.
+- A **policy deployment** joins the two. The same policy can run simultaneously against a
+  paper account and a live wallet, which is how you compare intended behaviour against
+  real fills.
 
-```bash
-npm run worker:chain-snapshots
-# or with auto-reload: npm run worker:chain-snapshots:dev
-```
+Execution runs per deployment, so paper and live results for one strategy are directly
+comparable instead of being two separate configurations that drift apart.
 
-### Scoring worker
+### Agents are advisory
 
-Converts raw pair + snapshot data into normalized trade scores using the active policy. Polls every 30 seconds. Uses the active policy (status = 'active') for hard filters and feature weights. Outputs to `pair_scores` table with eligibility, score, signal (NO_TRADE/WATCH/TRADE_CANDIDATE/PRIORITY_TRADE), and feature contributions for explainability. **PumpSwap** pairs are only scored if they pass the same schedule as chain snapshots (tier, age vs active policies, LP lock vs `require_lp_lock` — see `snapshot-pair-eligibility-sql.ts`); other DEXes still use recent-snapshot discovery only. Requires pumpswap-pairs worker and chain-snapshots worker to run first.
+Two optional [ADK](https://github.com/google/adk) agents live in [`agents/`](agents/).
+The **recommendator** analyses historical performance and writes rows to
+`recommendations`; the **optimizer** analyses policy stats via SQL and can propose or
+apply tuning. Recommendations are inert until a human accepts them in the UI. The one
+exception is a policy explicitly flagged **Auto Optimize**, which the optimizer may
+update on its own — leave that off unless you understand what it will do.
 
-```bash
-npm run worker:scoring
-# or with auto-reload: npm run worker:scoring:dev
-```
+---
 
-### Execution worker
+## Security
 
-Deterministic, policy-driven execution: reads scored signals (TRADE_CANDIDATE, PRIORITY_TRADE) from `pair_scores`, validates policy match and market mode, applies kill switches and limits, then records paper entries to `trade_decisions`. Balance is read and updated from the `accounts` table (reserve on entry). Position size = min(risk-based size, available_balance); insufficient balance skips the trade. Exits are handled by the exit worker. Paper only; no live prices or real orders.
+**The private key is the whole ballgame.** `SOLANA_PRIVATE_KEY` signs every live
+transaction. Treat this repository's threat model as "whatever can read that environment
+variable controls the wallet."
 
-```bash
-npm run worker:execution
-# or with auto-reload: npm run worker:execution:dev
-```
+- **Use a dedicated hot wallet** funded with only what you are willing to lose. Never
+  your main wallet, never a hardware-wallet seed.
+- **Keep `.env` out of version control.** It is gitignored, along with the usual
+  credential filenames, and this repository's history has been scanned to confirm no key
+  was ever committed. That protects you from the common accident, not from a deliberate
+  one.
+- **The MCP server is unauthenticated.** It binds to `127.0.0.1` by default, and it
+  should stay that way. It exposes tools that can change policies, settings, and
+  accounts, and force-exit trades. Anything that can reach the port can do all of that.
+  Do not set `MCP_BIND_ADDRESS=0.0.0.0` on a machine reachable from the internet; if you
+  need remote access, put it behind a VPN or an authenticating reverse proxy.
+- **The UI is likewise unauthenticated** and talks to that server. `UI_HOST=0.0.0.0`
+  exposes it to your whole network.
+- **Rotate anything you paste anywhere.** Helius keys and database URLs end up in shell
+  history, terminal scrollback, and screenshots far more often than in code.
 
-### Exit worker
+Found a vulnerability? Open an issue for anything non-sensitive. For anything that could
+be exploited against a running deployment, please report it privately rather than in a
+public issue.
 
-Closes open paper trades using policy thresholds and latest snapshot price. For each open `trade_decisions` row, evaluates in order: **stop loss** (exit if PnL % ≤ `stop_loss_pct`), **take profit** (exit if PnL % ≥ `take_profit_pct`), **time stop** (exit if `now - entry_time >= time_stop_seconds`). First condition met closes the trade: computes realized PnL, updates `accounts` (current_equity and available_balance), sets `exit_recorded_at` on the decision, and inserts into `trades` with `exit_reason` (STOP_LOSS | TAKE_PROFIT | TIME_STOP). Missing price for a pair skips that trade for the cycle. Runs every 20 seconds.
+---
 
-```bash
-npm run worker:exit
-# or with auto-reload: npm run worker:exit:dev
-```
+## Known limitations
 
-### Policy analytics worker
+Stated plainly, because some of these will cost you money if you assume otherwise.
 
-Rolls up raw events (pair_scores, trade_decisions, trades, trade_decision_skips, entry_filter_rejections) into hourly buckets in `policy_stats_hourly` for the Stats UI and agent reasoning. Append/upsert only; idempotent via `policy_analytics_offsets`. Run every 30–60s. Use the MCP tool `get_policy_stats_timeseries` (policy_version, from, to) to read the same data the Stats page uses.
+- **One signer for all live accounts.** `SOLANA_PRIVATE_KEY` is a single process-wide
+  keypair, and the Solana executor does not check it against `accounts.address`. If you
+  configure two live accounts with different addresses, **both trade from the same
+  wallet** while balance syncing follows the addresses you declared — so account-level
+  risk limits are computed against a balance that is not the one actually trading. Run
+  exactly one live account until this is fixed.
+- **Thin test coverage.** One test file, covering swap-event parsing. The scoring,
+  execution, and exit workers — roughly 3,500 lines that decide whether money moves —
+  have no automated tests. Backtest before trusting any policy change.
+- **Solana only.** The data model carries a `chain` column throughout and the executor
+  layer has a registry keyed by chain, but only Solana is implemented.
+  [`src/executors/evm.ts`](src/executors/evm.ts) is a placeholder that throws.
+- **PumpSwap only, in practice.** Raydium and Pump.fun swap paths exist, but discovery
+  and snapshots currently cover PumpSwap.
+- **No MEV protection.** Transactions go to a standard RPC. No private mempool, no
+  Jito bundles, no sandwich mitigation beyond slippage limits.
+- **The exit worker bypasses one kill switch.** It calls the live sell path directly
+  rather than going through the central `executeOrderForAccount` guard, so
+  `LIVE_TRADING_ENABLED=false` stops new entries but does not stop a live exit sell.
+  Arguably the safer direction to fail, but it is not what the flag implies.
 
-```bash
-npm run worker:policy-analytics
-# or with auto-reload: npm run worker:policy-analytics:dev
-```
+---
 
-### Account balance worker
+## MCP server
 
-Polls all **live** Solana accounts and updates `balance_native` (and `balance_last_updated`) in the `accounts` table using the global `HELIUS_RPC_URL`. Paper accounts are skipped. Use this when running live Solana execution so the UI and any balance checks see up-to-date SOL. Polls every 90 seconds. Requires `HELIUS_RPC_URL` to be set; logs a warning at startup if live Solana accounts exist and RPC is missing.
-
-```bash
-npm run worker:account-balance
-# or with auto-reload: npm run worker:account-balance:dev
-```
-
-### Backtest worker
-
-Processes queued backtest runs. Backtests are enqueued via the MCP tool `run_policy_backtest` (from the UI Backtests tab or an agent): the tool inserts a row into `backtest_runs` with `status = 'queued'`. This worker polls for queued runs, marks each as `running`, loads historical `pair_snapshots` and `pair_scores` for the run’s time range, runs the deterministic backtest engine (replay of entry/exit/cooldown logic with no live trading), writes results to `backtest_trades` and `backtest_metrics`, then sets the run to `completed` or `failed`. Read-only with respect to live trading; only writes to `backtest_*` tables. Polls every 5 seconds. Start this worker so that backtests requested in the UI or by agents are executed.
-
-```bash
-npm run worker:backtest
-# or with auto-reload: npm run worker:backtest:dev
-```
-
-### Optimizer agent worker
-
-Calls the **optimizer agent** via the ADK REST API on a configurable interval (default **20 minutes**; set `OPTIMIZER_AGENT_INTERVAL_MINUTES` to override). Each cycle it ensures a session exists (user `default`, session id `optimizer_worker`), sends the message **"run again"**, and logs the agent's text response. The optimizer agent then auto-optimizes active policies that have **Auto Optimize** enabled (SQL analytics, DexScreener/DexTools checks, policy updates or recommendations). **Requires `AGENT_API_URL`.** The agent API server must be running with the optimizer entry point (e.g. from the `agents` directory: `npx adk api_server optimizer-agent.ts`). Optional: set `OPTIMIZER_APP_NAME` to the app name exposed by your API server (e.g. `optimizer-agent` or `optimizer_agent`) if it differs from the default. If the agent API is unreachable or the app name is missing, the worker logs a warning and skips the cycle; on session-not-found it retries by creating the session and running again.
-
-```bash
-npm run worker:optimizer-agent
-# or with auto-reload: npm run worker:optimizer-agent:dev
-```
-
-## Scripts
-
-Scripts in `src/scripts/` are run with `npx tsx src/scripts/<name>.ts` (or after `npm run build`, `node dist/scripts/<name>.js`). One script has npm aliases (see below).
-
-### Sell dust
-
-Sells **dust** tokens in the Solana wallet: any token that has a balance but **no open trade decision** (no open position) for the default Solana account. Resolves pool/DEX from the database first, then DexScreener API for tokens not in the DB. Skips WSOL and tokens that have an open position. Uses a slippage ladder and retries on failure.
-
-**Requirements:** `HELIUS_RPC_URL`, `SOLANA_PRIVATE_KEY`. To send transactions, set `LIVE_TRADING_ENABLED=true` in `.env`.
-
-```bash
-# List dust only (no transactions sent)
-npm run sell-dust:dev -- --dry-run
-
-# Sell dust (sends real transactions when LIVE_TRADING_ENABLED=true)
-npm run sell-dust:dev
-```
-
-After building: `npm run sell-dust -- --dry-run` or `npm run sell-dust`.
-
-### Retry sell
-
-Debug script to **retry a PumpSwap (or other DEX) sell** for a specific pair/token. Builds the swap transaction and **simulates by default**; use `--send` to submit. Useful to diagnose sell failures (e.g. insufficient token balance).
-
-**Requirements:** `HELIUS_RPC_URL`. To send: `SOLANA_PRIVATE_KEY` and (if enforced) `LIVE_TRADING_ENABLED=true`.
-
-```bash
-# By pair address (token/dex resolved from DB)
-npx tsx src/scripts/retry-sell.ts <pair_address>
-
-# By pair_scores id
-npx tsx src/scripts/retry-sell.ts --score-id <id>
-
-# With options and send
-npx tsx src/scripts/retry-sell.ts <pair_address> --slippage 1000 --usd 0.5 --send
-
-# Pair not in DB: pass token mint (and optionally --dex)
-npx tsx src/scripts/retry-sell.ts <pair_address> --token <base_token_mint> --dex pumpswap
-```
-
-| Option | Description |
-|--------|-------------|
-| `--token <mint>` | Token mint (default: from DB) |
-| `--dex <dex>` | DEX name (default: pumpswap) |
-| `--usd <amount>` | Min expected output USD for slippage (default: 0.1) |
-| `--slippage <bps>` | Slippage in basis points (default: 500) |
-| `--send` | Send the transaction (default: simulate only) |
-| `--score-id <id>` | Resolve pair/token/dex from `pair_scores.id` |
-
-### Retry buy
-
-Debug script to **retry a PumpSwap (or other DEX) buy** for a specific pair/token. Simulates by default; use `--send` to submit.
-
-**Requirements:** Same as retry-sell.
+The backend is an [MCP](https://modelcontextprotocol.io/) server over Streamable HTTP,
+exposing **54 tools** across pairs, snapshots, scores, decisions, trades, policies,
+deployments, accounts, analytics, backtests, recommendations, and agent control. The UI
+is a client of those same tools, so anything the UI can do, an agent or script can do
+too.
 
 ```bash
-npx tsx src/scripts/retry-buy.ts <pair_address>
-npx tsx src/scripts/retry-buy.ts --score-id <id>
-npx tsx src/scripts/retry-buy.ts <pair_address> --usd 0.5 --slippage 1000 --send
-npx tsx src/scripts/retry-buy.ts <pair_address> --token <base_token_mint> --dex pumpswap
+npm run mcp        # compiled; npm run mcp:dev for watch mode
 ```
 
-Options: `--token`, `--dex`, `--usd` (position size in USD, default 1.0), `--slippage`, `--send`, `--score-id` (same as retry-sell).
-
-### Debug PumpSwap transaction
-
-One-off debug script to **fetch a Solana transaction by signature** (base64 and jsonParsed), inspect inner instructions, and run the PumpSwap RPC parser. Used to verify how the parser interprets a real tx (e.g. swap direction, pool, amount).
-
-**Requirements:** `HELIUS_RPC_URL`.
+Browse and call tools interactively:
 
 ```bash
-# Use default hardcoded signature
-HELIUS_RPC_URL=... npx tsx src/scripts/debug-pumpswap-tx.ts
-
-# Custom signature
-npx tsx src/scripts/debug-pumpswap-tx.ts <signature>
+npx @modelcontextprotocol/inspector     # point it at http://localhost:3000/mcp
 ```
 
-Output includes inner-instruction layout, normalized PumpSwap inner instructions, and parser result (swaps / pool addresses).
+Business logic lives in `src/mcp-server/tools/<domain>.ts`; REST routes in `routes.ts`
+are thin wrappers over the same functions. See [AGENTS.md](AGENTS.md) for the
+conventions this follows.
 
-### Clear database
+If a client reports a timeout while the server eventually succeeds, the limit is usually
+on the client side — the server disables Node's own request timeout by default.
 
-Clears all tables **except** `policies` and `policy_deployments`. Resets the snapshot cursor and re-seeds default accounts (`paper-default`, `solana-wallet`). Use to wipe trades, pairs, snapshots, scores, and other runtime data while keeping policy and deployment config.
+---
 
-**Requirements:** `DATABASE_URL` must point at a PostgreSQL database (create the DB first).
-
-```bash
-# Dry run (list tables that would be cleared)
-npx tsx src/scripts/clear-db.ts --dry-run
-
-# Run
-npx tsx src/scripts/clear-db.ts
-```
-
-## MCP Server
-
-The backend exposes tools via the [Model Context Protocol](https://modelcontextprotocol.io/) over Streamable HTTP. The UI uses these MCP tools to fetch data.
-
-**Tools:**
-- `list_pairs` – List trading pairs from the database (optional `limit`, `offset`, filters; optional `eligible_for_snapshots` to restrict to the same PumpSwap eligibility as snapshots/vault/scoring workers)
-- `list_snapshots` – List recent pair snapshots (optional `limit`, `offset`)
-- `get_snapshots_by_ids` – Get snapshots by snapshot IDs
-- `list_trades` – List trades from the database (optional `limit`, `offset`)
-- `list_trade_decisions` – List trade decisions / paper entries (optional `limit`, `offset`, `open_only`)
-- `get_paper_account` – Get paper account (balance, mode). Read-only.
-- `reset_paper_account` – Close all open paper trades and reset balance to starting equity
-- `list_policies` – List policies (optional `limit`, `offset`, `status`)
-- `list_pair_scores` – List pair scores (optional `limit`, `offset`, `signal`, `eligible`)
-- `create_policy` – Create a new policy
-
-Start the MCP server (port 3000):
-
-```bash
-npm run build   # if you changed server code
-npm run mcp
-```
-
-For development with auto-reload on file changes:
-
-```bash
-npm run mcp:dev
-```
-
-Restart the MCP server and refresh the UI after adding or changing tools.
-
-### Timeouts (agents / Cursor)
-
-Timeouts can come from **two** places:
-
-1. **Node HTTP server** — From Node 18 onward, `requestTimeout` defaults to **5 minutes**. Slow tools (heavy DB, RPC) can hit this while the response is still pending. This server sets **`MCP_HTTP_REQUEST_TIMEOUT_MS`** default behavior to **`0`** (disable Node’s request timeout) so long tool calls are not cut off by the server. Override if you want a cap, e.g. `MCP_HTTP_REQUEST_TIMEOUT_MS=600000` (10 minutes).
-
-2. **MCP client (e.g. Cursor)** — The IDE enforces its **own** MCP tool timeout (often shorter than 5 minutes). If the agent still reports timeouts after a successful server response, raise the client limit. In **Settings (JSON)** try:
-
-   - `"mcp.server.timeout": 600000` (10 minutes, milliseconds — exact key may vary by Cursor version)
-
-Restart Cursor after changing IDE settings. See [Cursor forum threads on MCP timeouts](https://forum.cursor.com/) for current keys and defaults.
-
-Optional server env (all milliseconds, `0` = use Node default where not explicitly set):
-
-| Variable | Purpose |
-|----------|---------|
-| `MCP_HTTP_REQUEST_TIMEOUT_MS` | Node `server.requestTimeout`. Default **unset** → applied as **`0`** (disabled). |
-| `MCP_HTTP_HEADERS_TIMEOUT_MS` | Node `server.headersTimeout` (incoming request headers). Only set if you know you need it. |
-| `MCP_HTTP_KEEP_ALIVE_TIMEOUT_MS` | Node `server.keepAliveTimeout`. Only set if you know you need it. |
-
-### MCP Inspector
-
-To inspect and test MCP tools (e.g. list tools, call them with custom arguments), run the official MCP inspector. With the MCP server already running (`npm run mcp`), in another terminal:
-
-```bash
-npx @modelcontextprotocol/inspector
-```
-
-Then point the inspector at your server URL (e.g. `http://localhost:3000/mcp` for Streamable HTTP). You can browse tools and send requests from the inspector UI.
-
-### MCP Toolbox for Databases
-
-[MCP Toolbox for Databases](https://googleapis.github.io/genai-toolbox/getting-started/introduction/) is an open-source MCP server that exposes database tools (e.g. SQLite, PostgreSQL, BigQuery) so agents can run read-only or managed queries, inspect schema, and integrate with your IDE or other MCP clients.
-
-For installation, configuration, and running the server (binary, container, or `npx`), see the official **Getting started** guide:
-
-**https://googleapis.github.io/genai-toolbox/getting-started/introduction/**
-
-```
-SQLITE_DATABASE=./data/amadeus.db npx @toolbox-sdk/server --address 0.0.0.0 --ui --prebuilt=sqlite
-```
-
-or 
-
-```
-SQLITE_DATABASE=./data/amadeus.db toolbox --address 0.0.0.0 --ui --prebuilt=sqlite
-```
 ## UI
 
-The UI is a React app that connects to the MCP server and displays pairs. It uses the MCP client to call tools.
+A React + Vite app with a tab per stage of the pipeline: Pairs, Snapshots, Scores,
+Decisions, Trades, Policies, Deployments, Account, Stats, Analytics, Recommendations,
+Backtests, Agent.
 
-1. Start the MCP server: `npm run mcp`
-2. Install UI deps and start dev server: `npm run ui` (or `cd ui && npm install && npm run dev`)
-3. Open http://localhost:5173 (or the port you set — see below).
+```bash
+npm run ui      # or: cd ui && npm install && npm run dev
+```
 
-**Port:** The dev server defaults to port **5173**. To use a different port:
+It proxies `/mcp`, `/api`, and `/stats` to the MCP server in development. For a
+production build, set `MCP_URL` and serve `ui/dist`.
 
-- **Environment variable:** set `UI_PORT` (e.g. in `ui/.env` or when invoking: `UI_PORT=3001 npm run ui`).
-- **One-off:** from the `ui` directory run `npm run dev -- --port <port>` (e.g. `npm run dev -- --port 3001`).
+---
 
-**Host:** By default the dev server listens on localhost only. To listen on all interfaces (e.g. to access from another device on the LAN), set `UI_HOST=0.0.0.0` or `UI_HOST=true` (e.g. in `ui/.env` or `UI_HOST=0.0.0.0 npm run ui`). From the `ui` directory you can also run `npm run dev -- --host` or `npm run dev -- --host 0.0.0.0`.
+## Operational scripts
 
-The UI proxies `/mcp`, `/api`, and `/stats` to the MCP server in dev. For production, set `MCP_URL` to the MCP server URL.
+Run with `npx tsx src/scripts/<name>.ts`, or from `dist/` after a build.
+
+| Script | Purpose |
+|---|---|
+| `sell-dust` | Sells leftover tokens with no open position. Supports `--dry-run`. Has npm aliases: `npm run sell-dust:dev -- --dry-run`. |
+| `retry-sell` | Rebuilds and retries a sell for one pair. **Simulates by default**; `--send` submits. Useful for diagnosing failed exits. |
+| `retry-buy` | The same for a buy. |
+| `debug-pumpswap-tx` | Fetches a transaction by signature and runs the PumpSwap parser against it, to check how a real swap is interpreted. |
+| `clear-db` | Wipes runtime data but keeps policies and deployments. `--dry-run` lists what it would clear. |
+| `test-db-connection` | Verifies `DATABASE_URL`. `npm run test:db`. |
+
+`retry-sell`, `retry-buy`, and `sell-dust` can submit real transactions. All three
+simulate unless you pass `--send` or enable live trading.
+
+---
+
+## Development
+
+```bash
+npm run build       # tsc, plus copying the DDL into dist/
+npm run dev         # tsc --watch
+npm test            # node --test over tests/**/*.test.ts
+npm run test:db     # check the database connection
+```
+
+Conventions are documented in [AGENTS.md](AGENTS.md) and are worth reading before a
+first pull request. The important ones:
+
+- **Helius-first RPC.** Batch account reads, use `dataSlice` and filters, paginate with
+  cursors, prefer subscriptions over polling. Simulate for compute units, set a priority
+  fee, and handle retries yourself rather than leaning on the RPC.
+- **Named SQL parameters only.** `db.prepare('... WHERE id = $id').get({ id })`, never
+  positional `?`.
+- **MCP tools stay thin.** Domain logic belongs in the worker or executor that owns it
+  and gets imported, not copied into a tool handler.
+
+Contributions are welcome. Given how thin the test coverage is, a pull request that adds
+tests around the scoring, execution, or exit workers is worth more than a feature.
+
+---
+
+## License
+
+ISC. See [LICENSE](LICENSE).
