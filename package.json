@@ -46,7 +46,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.25.3",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@pump-fun/pump-swap-sdk": "^1.13.0",
     "@raydium-io/raydium-sdk-v2": "^0.2.32-alpha",
     "@solana/spl-token": "^0.4.14",
